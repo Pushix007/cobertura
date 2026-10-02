@@ -53,8 +53,13 @@ def make_excel_report(sheets: dict[str, pd.DataFrame], params: dict) -> bytes:
             for c, col in enumerate(df.columns):
                 width = min(max(len(str(col)) + 2, 12), 32)
                 if len(df):
-                    sample = df[col].astype(str).head(100)
-                    width = min(max(width, int(sample.str.len().quantile(0.9)) + 2), 32)
+                    # Mede somente valores realmente preenchidos. Em colunas vazias,
+                    # quantile() pode retornar NaN e int(NaN) gera ValueError.
+                    sample = df[col].dropna().astype(str).head(100)
+                    if not sample.empty:
+                        q90 = sample.str.len().quantile(0.9)
+                        if pd.notna(q90):
+                            width = min(max(width, int(q90) + 2), 32)
                 ws.set_column(c, c, width)
                 ws.write(0, c, col, header_fmt)
 

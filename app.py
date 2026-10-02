@@ -26,8 +26,13 @@ st.markdown(
     <style>
     .block-container {padding-top: 1.1rem; padding-bottom: 2rem;}
     [data-testid="stMetric"] {background:#ffffff; border:1px solid #e5e7eb; padding:14px; border-radius:12px;}
-    .app-title {font-size:2rem; font-weight:800; color:#202124; margin-bottom:0;}
-    .app-subtitle {color:#6b7280; margin-top:0.1rem;}
+    [data-testid="stMetricLabel"],
+    [data-testid="stMetricLabel"] p {color:#374151 !important; opacity:1 !important;}
+    [data-testid="stMetricValue"],
+    [data-testid="stMetricValue"] div {color:#111827 !important;}
+    [data-testid="stMetricDelta"] {color:#374151 !important;}
+    .app-title {font-size:2rem; font-weight:800; color:#f8fafc; margin-bottom:0;}
+    .app-subtitle {color:#94a3b8; margin-top:0.1rem;}
     .badge {display:inline-block; background:#EB0A1E; color:white; padding:4px 10px; border-radius:999px; font-size:.8rem; font-weight:700;}
     .okbox {padding:.8rem 1rem; border-radius:10px; background:#ecfdf5; color:#166534; border:1px solid #bbf7d0;}
     </style>
@@ -466,12 +471,20 @@ with tabs[6]:
         "Pátios/status excluídos": ", ".join(excluded_patios) if excluded_patios else "Nenhum",
         "Marcas": ", ".join(selected_brands),
     }
-    excel_bytes = make_excel_report(report_sheets, params)
-    st.download_button(
-        "Baixar relatório Excel completo",
-        data=excel_bytes,
-        file_name="analise_estoque_toyota.xlsx",
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        use_container_width=True,
-    )
-    st.caption("O relatório reflete os parâmetros de negócio, marcas e pátios/status selecionados acima.")
+    try:
+        excel_bytes = make_excel_report(report_sheets, params)
+    except Exception as exc:
+        st.error(
+            "Não foi possível gerar o arquivo Excel neste momento. "
+            "As análises na tela continuam disponíveis. "
+            f"Detalhe técnico: {type(exc).__name__}: {exc}"
+        )
+    else:
+        st.download_button(
+            "Baixar relatório Excel completo",
+            data=excel_bytes,
+            file_name="analise_estoque_toyota.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            use_container_width=True,
+        )
+        st.caption("O relatório reflete os parâmetros de negócio, marcas e pátios/status selecionados acima.")

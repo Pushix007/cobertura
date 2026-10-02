@@ -21,3 +21,10 @@
 - pareamento exato classificado como `RECOMENDADA` e cor alternativa como `AVALIAR`;
 - aba de qualidade da base;
 - exportação com detalhamento por loja/modelo e loja/modelo/cor.
+
+## v2.2
+- Corrige a geração do Excel quando uma coluna está totalmente vazia/nula (erro em `int(NaN)`).
+- Isola falhas de exportação para que não interrompam as demais abas do aplicativo.
+- Ajusta a cor da fonte dos cards `st.metric` para alto contraste no tema escuro.
+- Ajusta título e subtítulo para melhor leitura em fundo escuro.
+- Validado com as bases reais `Estoque Toyota.xlsx` e `Histórico Toyota.xlsx`.

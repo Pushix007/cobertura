@@ -79,18 +79,61 @@ def derive_brand(family: str, model: str = "") -> str:
 
 
 def _parse_excel_or_date(series: pd.Series) -> pd.Series:
-    """Aceita datas já convertidas pelo Excel ou seriais numéricos."""
-    numeric = pd.to_numeric(series, errors="coerce")
+    """Converte datas do Excel de forma segura.
+
+    Suporta:
+    - colunas já lidas como ``datetime64`` pelo pandas/openpyxl;
+    - números seriais do Excel (ex.: 45500);
+    - datas em texto no padrão brasileiro;
+    - timestamps Unix em segundos/ms/us/ns, quando existirem.
+
+    A checagem de ``datetime64`` precisa acontecer antes de ``pd.to_numeric``.
+    Caso contrário, pandas transforma Timestamps em inteiros enormes (ns desde
+    1970) e esses valores acabam sendo interpretados incorretamente como dias.
+    """
+    if pd.api.types.is_datetime64_any_dtype(series):
+        return pd.to_datetime(series, errors="coerce")
+
     dt = pd.Series(pd.NaT, index=series.index, dtype="datetime64[ns]")
-    numeric_mask = numeric.notna()
-    if numeric_mask.any():
-        dt.loc[numeric_mask] = pd.Timestamp("1899-12-30") + pd.to_timedelta(
-            numeric.loc[numeric_mask], unit="D"
+
+    # Primeiro preserva objetos que já são datas/Timestamps.
+    object_date_mask = series.map(
+        lambda x: isinstance(x, (pd.Timestamp, __import__("datetime").datetime, __import__("datetime").date))
+        if not pd.isna(x) else False
+    )
+    if object_date_mask.any():
+        dt.loc[object_date_mask] = pd.to_datetime(series.loc[object_date_mask], errors="coerce")
+
+    remaining = ~object_date_mask
+    numeric = pd.to_numeric(series.where(remaining), errors="coerce")
+
+    # Seriais de data do Excel normalmente estão na ordem de dezenas de milhares.
+    excel_mask = numeric.notna() & numeric.between(1, 100000)
+    if excel_mask.any():
+        dt.loc[excel_mask] = pd.Timestamp("1899-12-30") + pd.to_timedelta(
+            numeric.loc[excel_mask], unit="D"
         )
-    text_mask = ~numeric_mask
-    if text_mask.any():
-        dt.loc[text_mask] = pd.to_datetime(
-            series.loc[text_mask], errors="coerce", format="mixed", dayfirst=True
+
+    # Caso apareçam timestamps Unix numéricos, converte pela ordem de grandeza.
+    num_remaining = numeric.notna() & ~excel_mask
+    if num_remaining.any():
+        vals = numeric.loc[num_remaining].abs()
+        masks_units = [
+            (vals < 1e11, "s"),
+            ((vals >= 1e11) & (vals < 1e14), "ms"),
+            ((vals >= 1e14) & (vals < 1e17), "us"),
+            (vals >= 1e17, "ns"),
+        ]
+        for mask, unit in masks_units:
+            idx = vals.index[mask]
+            if len(idx):
+                dt.loc[idx] = pd.to_datetime(numeric.loc[idx], errors="coerce", unit=unit)
+
+    # Por fim, tenta interpretar tudo que restou como texto de data.
+    unresolved = dt.isna() & series.notna()
+    if unresolved.any():
+        dt.loc[unresolved] = pd.to_datetime(
+            series.loc[unresolved], errors="coerce", format="mixed", dayfirst=True
         )
     return dt
 

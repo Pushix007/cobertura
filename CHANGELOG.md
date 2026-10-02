@@ -1,5 +1,12 @@
 # Changelog
 
+## v2.1 - Correção de leitura de datas
+
+- corrige erro de overflow ao carregar `Data Venda` já reconhecida pelo Excel/pandas como data;
+- preserva colunas `datetime64` antes da tentativa de conversão numérica;
+- mantém suporte a datas em texto, serial do Excel e timestamps Unix;
+- validado com as bases reais `Estoque Toyota.xlsx` e `Histórico Toyota.xlsx`.
+
 ## v2.0 - Bases Toyota reais
 
 - reconhecimento automático das colunas `Filial`, `Pátio` e `Filial_vendedor`;
